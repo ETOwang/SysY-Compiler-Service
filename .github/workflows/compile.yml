@@ -51,10 +51,28 @@ jobs:
         with:
           distribution: 'temurin'
           java-version: '17'
+          cache: 'maven'
 
-      - name: Download SysY Compiler
+      - name: Clone and build SysY Compiler
         run: |
-          wget https://github.com/ETOwang/SysY-Compiler/releases/download/v1.0.0/compiler-1.0-SNAPSHOT-jar-with-dependencies.jar -O compiler.jar
+          # 克隆SysY-Compiler仓库
+          git clone https://github.com/ETOwang/SysY-Compiler.git
+          cd SysY-Compiler
+          
+          # 使用Maven构建编译器
+          mvn clean package -DskipTests
+          
+          # 将构建的JAR复制到工作目录
+          cp target/compiler-*-jar-with-dependencies.jar ../compiler.jar
+          cd ..
+          
+          # 验证JAR文件是否存在
+          if [ ! -f compiler.jar ]; then
+            echo "Error: Compiler JAR not found!"
+            exit 1
+          fi
+          
+          echo "Successfully built compiler.jar"
 
       - name: Create source file
         run: |
