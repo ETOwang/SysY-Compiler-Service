@@ -57,168 +57,22 @@ jobs:
         run: |
           # 克隆SysY-Compiler仓库
           git clone https://github.com/ETOwang/SysY-Compiler.git
+          cd SysY-Compiler
           
-          # 查看仓库结构
-          echo "Repository structure:"
-          ls -la SysY-Compiler/
-          
-          # 显示pom.xml内容
-          echo "pom.xml content:"
-          cat SysY-Compiler/pom.xml
-      
-      - name: Build with Maven
-        working-directory: SysY-Compiler
-        run: |
-          # 运行Maven构建
+          # 使用Maven构建编译器
           mvn clean package -DskipTests
           
-          # 检查构建结果
-          echo "Build results:"
-          ls -la target/
+          # 将构建的JAR复制到工作目录
+          cp target/compiler-*-jar-with-dependencies.jar ../compiler.jar
+          cd ..
           
-      - name: Copy compiled JAR
-        run: |
-          # 查找JAR文件
-          JAR_PATH=$(find SysY-Compiler/target -name "*jar-with-dependencies.jar" -o -name "*-all.jar" -o -name "*-shaded.jar" 2>/dev/null | head -1)
-          
-          if [ -n "$JAR_PATH" ]; then
-            echo "Found JAR at $JAR_PATH"
-            cp "$JAR_PATH" compiler.jar
-            echo "Successfully copied compiler JAR"
-            ls -la compiler.jar
-          else
-            echo "No assembled JAR found after Maven build. Looking for any JAR..."
-            JAR_PATH=$(find SysY-Compiler/target -name "*.jar" 2>/dev/null | grep -v "sources.jar" | head -1)
-            
-            if [ -n "$JAR_PATH" ]; then
-              echo "Found JAR at $JAR_PATH"
-              cp "$JAR_PATH" compiler.jar
-            else
-              echo "No JAR files found! Build may have failed."
-              # 创建一个简单的fallback JAR，如之前的实现
-              echo "Creating fallback compiler..."
-              # 创建一个简单的Java程序作为临时替代
-              mkdir -p temp/org/sysy/compiler
-              cat > temp/org/sysy/compiler/Main.java << 'EOF'
-              package org.sysy.compiler;
-              
-              import java.io.File;
-              import java.io.FileWriter;
-              import java.io.IOException;
-              import java.nio.file.Files;
-              import java.nio.file.Paths;
-              import java.util.Arrays;
-              
-              public class Main {
-                  public static void main(String[] args) {
-                      try {
-                          System.out.println("SysY Compiler Fallback Implementation");
-                          System.out.println("Arguments: " + Arrays.toString(args));
-                          
-                          if (args.length < 1) {
-                              System.err.println("Error: No input file specified");
-                              System.exit(1);
-                          }
-                          
-                          String inputFile = args[0];
-                          String outputFile = "a.out";
-                          boolean isLLVM = false;
-                          boolean isRISCV = false;
-                          String optimization = "O0";
-                          
-                          // 解析命令行参数
-                          for (int i = 1; i < args.length; i++) {
-                              if (args[i].equals("--emit-llvm")) {
-                                  isLLVM = true;
-                              } else if (args[i].equals("--target") && i+1 < args.length && args[i+1].equals("riscv")) {
-                                  isRISCV = true;
-                                  i++;
-                              } else if (args[i].equals("-O1") || args[i].equals("-O2")) {
-                                  optimization = args[i].substring(1);
-                              } else if (args[i].equals("-o") && i+1 < args.length) {
-                                  outputFile = args[i+1];
-                                  i++;
-                              }
-                          }
-                          
-                          // 读取输入文件
-                          String sourceCode = new String(Files.readAllBytes(Paths.get(inputFile)));
-                          
-                          // 生成输出
-                          String output;
-                          if (isLLVM) {
-                              output = generateLLVM(sourceCode, optimization);
-                          } else if (isRISCV) {
-                              output = generateRISCV(sourceCode, optimization);
-                          } else {
-                              output = generateARM(sourceCode, optimization);
-                          }
-                          
-                          // 写入输出文件
-                          File outFile = new File(outputFile);
-                          try (FileWriter writer = new FileWriter(outFile)) {
-                              writer.write(output);
-                          }
-                          
-                          System.out.println("Compilation completed successfully");
-                      } catch (Exception e) {
-                          System.err.println("Compilation error: " + e.getMessage());
-                          e.printStackTrace();
-                          System.exit(1);
-                      }
-                  }
-                  
-                  private static String generateLLVM(String sourceCode, String optimization) {
-                      return "; LLVM IR Generated by SysY Compiler (Fallback)\n" +
-                             "; Source code:\n" +
-                             "; " + sourceCode.replace("\n", "\n; ") + "\n\n" +
-                             "define i32 @main() {\n" +
-                             "  ret i32 0\n" +
-                             "}\n";
-                  }
-                  
-                  private static String generateARM(String sourceCode, String optimization) {
-                      return "// ARM Assembly Generated by SysY Compiler (Fallback)\n" +
-                             "// Source code:\n" +
-                             "// " + sourceCode.replace("\n", "\n// ") + "\n\n" +
-                             ".global main\n" +
-                             "main:\n" +
-                             "    mov r0, #0\n" +
-                             "    bx lr\n";
-                  }
-                  
-                  private static String generateRISCV(String sourceCode, String optimization) {
-                      return "# RISC-V Assembly Generated by SysY Compiler (Fallback)\n" +
-                             "# Source code:\n" +
-                             "# " + sourceCode.replace("\n", "\n# ") + "\n\n" +
-                             ".global main\n" +
-                             "main:\n" +
-                             "    li a0, 0\n" +
-                             "    ret\n";
-                  }
-              }
-EOF
-              
-              # 编译Java程序
-              javac -d temp temp/org/sysy/compiler/Main.java
-              
-              # 创建JAR文件
-              cd temp
-              jar cfe ../compiler.jar org.sysy.compiler.Main org
-              cd ..
-              
-              echo "Created fallback compiler.jar"
-            fi
-          fi
-          
-          # 验证最终的JAR文件
-          if [ -f compiler.jar ]; then
-            echo "Successfully prepared compiler.jar"
-            ls -la compiler.jar
-          else
-            echo "Failed to prepare compiler.jar"
+          # 验证JAR文件是否存在
+          if [ ! -f compiler.jar ]; then
+            echo "Error: Compiler JAR not found!"
             exit 1
           fi
+          
+          echo "Successfully built compiler.jar"
 
       - name: Create source file
         run: |
