@@ -57,18 +57,44 @@ jobs:
         run: |
           # 克隆SysY-Compiler仓库
           git clone https://github.com/ETOwang/SysY-Compiler.git
+          
+          # 检查仓库结构
+          echo "检查SysY-Compiler仓库结构:"
+          ls -la SysY-Compiler/
+          
+          # 确认pom.xml存在
+          if [ -f "SysY-Compiler/pom.xml" ]; then
+            echo "找到pom.xml文件，开始构建..."
+          else
+            echo "Error: SysY-Compiler仓库中未找到pom.xml文件!"
+            exit 1
+          fi
+          
+          # 在SysY-Compiler目录中执行Maven构建
           cd SysY-Compiler
           
+          # 显示Maven版本信息
+          echo "Maven版本信息:"
+          mvn -v
+          
           # 使用Maven构建编译器
+          echo "开始Maven构建..."
           mvn clean package -DskipTests
           
-          # 将构建的JAR复制到工作目录
-          cp target/compiler-*-jar-with-dependencies.jar ../compiler.jar
-          cd ..
+          # 检查target目录中生成的文件
+          echo "构建结果:"
+          ls -la target/
           
-          # 验证JAR文件是否存在
-          if [ ! -f compiler.jar ]; then
-            echo "Error: Compiler JAR not found!"
+          # 寻找生成的JAR文件并复制到工作目录
+          JAR_FILE=$(find target -name "*jar-with-dependencies.jar" | head -1)
+          if [ -n "$JAR_FILE" ]; then
+            echo "找到JAR文件: $JAR_FILE"
+            cp $JAR_FILE ../compiler.jar
+            cd ..
+            echo "编译器JAR已复制到工作目录:"
+            ls -la compiler.jar
+          else
+            echo "Error: 未在target目录找到编译器JAR文件!"
             exit 1
           fi
           
