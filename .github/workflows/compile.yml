@@ -51,7 +51,6 @@ jobs:
         with:
           distribution: 'temurin'
           java-version: '17'
-          cache: 'maven'
 
       - name: Clone and build SysY Compiler
         run: |
